@@ -32,6 +32,10 @@ class ComponentCssEmitter {
 	private const MODE_INLINE = 'inline';
 	private const MODE_LINK   = 'link';
 
+	// NOTE: keep these constants aligned with the TS-side single source of truth at
+	// packages/component-runtime/src/shared/constants/BOOTSTRAP.ts. The blob/id
+	// format is part of the PHP↔JS bridge contract — `ComponentCssPlugin` reads
+	// `COVERAGE_BLOB_ID` and synthesizes `<link>` ids using `LINK_ID_PREFIX`.
 	private const STYLE_ID         = 'arts-cr-component-css';
 	private const LINK_ID_PREFIX   = 'arts-cr';
 	private const COVERAGE_BLOB_ID = 'arts-cr-css-coverage';

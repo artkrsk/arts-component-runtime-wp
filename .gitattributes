@@ -1,0 +1,10 @@
+# Files excluded from the composer-installed dist (and the subtree-split
+# mirror at artkrsk/arts-component-runtime-wp) — keeps consumers' vendor/
+# tree small and free of test / lint scaffolding.
+/tests          export-ignore
+/phpunit.xml    export-ignore
+/phpstan.neon   export-ignore
+/phpcs.xml      export-ignore
+/.editorconfig  export-ignore
+/.gitattributes export-ignore
+/.gitignore     export-ignore

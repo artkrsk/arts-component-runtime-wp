@@ -8,59 +8,35 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /**
  * Builds the always-full `arts-cr-manifest` JSON blob and the bootstrap
- * `<script type="module">` tag.
+ * `<script type="module">` tag. REQUIRED for the runtime to work.
  *
- * REQUIRED for the runtime to work. Without it the page has no bootstrap
- * entry point and no manifest blob to resolve component names against.
+ * Blob is always-full so AJAX nav, editor drops, and static templates resolve
+ * from a single emission. Shared chunks are excluded; the browser follows
+ * transitive ESM imports natively. Cost ~7 KB / ~1.5 KB gzipped.
  *
- * The blob is always-full (every component, every request) because it is the
- * global registry for the session — AJAX nav, editor drops, and static
- * templates all resolve from this single emission without a second pass.
- * Shared chunks are excluded; the browser follows transitive ESM imports
- * natively once it has the entry URL. Cost is ~7 KB JSON (~1.5 KB gzipped),
- * rounding-error against any real content payload.
+ * Per-entry asset URLs use `ManifestRegistry`'s `_arts_base_url` so components
+ * from one build coexist with bootstrap chunks from another build.
  *
- * Per-entry asset URLs are derived from the `_arts_base_url` field that
- * `ManifestRegistry` stamps onto every merged entry — this lets components
- * from one build coexist with bootstrap/subsystem chunks from another build
- * without the host having to know which addon owns which entry.
+ * Bootstrap tag uses direct string concat instead of
+ * `wp_register_script_module` / `wp_enqueue_script_module` because the
+ * Script Modules API shifts emission to `wp_footer` on classic themes
+ * (`print_enqueued_script_modules` only registers on `wp_footer` /
+ * `wp_head:10` for block themes); enqueue from a late buffer-rewrite hook
+ * misses both passes.
  *
- * Dev URL precedence: products supply per-component dev URLs via
- * `arts_runtime/dev_manifest`; this emitter folds them into the manifest
- * slice server-side by overwriting `entry.file` with the dev URL (and
- * synthesizing entries for dev-only components the prod manifest doesn't
- * know about yet). One blob, one resolver path on the JS side.
- *
- * The bootstrap tag is emitted via direct string concat rather than
- * `wp_register_script_module` / `wp_enqueue_script_module` because the WP
- * Script Modules API shifts emission to `wp_footer` on classic themes (its
- * `print_enqueued_script_modules` only registers on `wp_footer` /
- * `wp_head:10` for block themes); calling enqueue from a late-stage
- * buffer-rewrite hook misses both passes.
- *
- * Filters owned by this emitter:
- *   - `arts_runtime/bootstrap_entry` — override the bootstrap manifest key
+ * Filters:
+ *   - `arts_runtime/bootstrap_entry` — override bootstrap key
  *                                      (default `src/bootstrap.ts`).
- *   - `arts_runtime/dev_manifest`    — return `{ ComponentName => devUrl }`
- *                                      so the manifest entry's `file` is
- *                                      replaced with the Vite dev URL when
- *                                      a dev server is live (default `[]`).
+ *   - `arts_runtime/dev_manifest`    — `{ ComponentName => devUrl }` to
+ *                                      override `entry.file` with a Vite
+ *                                      dev URL (default `[]`).
  */
 class BootstrapEmitter {
-	/**
-	 * Default bootstrap entry key in the Vite manifest. Overridable via the
-	 * `arts_runtime/bootstrap_entry` filter — products that ship their own
-	 * `src/<name>.ts` entry rename here without subclassing.
-	 */
+	/** Overridable via the `arts_runtime/bootstrap_entry` filter. */
 	private const DEFAULT_BOOTSTRAP_ENTRY = 'src/bootstrap.ts';
 
 	private function __construct() {}
 
-	/**
-	 * Returns the `arts-cr-manifest` blob and the bootstrap
-	 * `<script type="module">` tag concatenated into a single string ready
-	 * to splice into the document head.
-	 */
 	public static function generate(): string {
 		$out = '';
 
@@ -77,9 +53,7 @@ class BootstrapEmitter {
 		if ( is_array( $entry ) && ! empty( $entry['file'] ) && is_string( $entry['file'] ) ) {
 			$bootstrap_url = ManifestRegistry::entry_asset_url( $entry, $entry['file'] );
 			// `wp_get_script_tag` esc_attr's `src` instead of esc_url'ing it,
-			// so pre-esc_url here for URL-semantic protection (% encoding,
-			// dangerous-protocol stripping) on top of the helper's attribute
-			// encoding. Trailing newline is part of the helper's return.
+			// so pre-esc_url for URL-semantic protection.
 			$out .= wp_get_script_tag(
 				array(
 					'type' => 'module',
@@ -92,11 +66,6 @@ class BootstrapEmitter {
 	}
 
 	/**
-	 * Resolves the dev-manifest map via the `arts_runtime/dev_manifest`
-	 * filter. Default empty; products with their own Vite builds populate
-	 * `{ ComponentName => devUrl }` so this emitter can fold dev URLs into
-	 * the prod manifest slice per name.
-	 *
 	 * @return array<string, string>
 	 */
 	private static function resolve_dev_manifest(): array {
@@ -118,10 +87,6 @@ class BootstrapEmitter {
 		return $result;
 	}
 
-	/**
-	 * Resolves the bootstrap manifest key. Default `src/bootstrap.ts`,
-	 * overridable via the `arts_runtime/bootstrap_entry` filter.
-	 */
 	private static function resolve_bootstrap_entry(): string {
 		/**
 		 * Filter the bootstrap manifest key.
@@ -133,10 +98,8 @@ class BootstrapEmitter {
 	}
 
 	/**
-	 * Builds the manifest slice — every component the merged manifest knows
-	 * about, keyed by its component name (derived from the Vite manifest key).
-	 * Mirrors `ManifestRegistry::resolve_component_key`'s accepted layouts
-	 * (subdirectory + flat, `.ts` + `.tsx`).
+	 * Manifest slice keyed by component name. Mirrors layouts accepted by
+	 * `ManifestRegistry::resolve_component_key` (subdirectory + flat, `.ts` + `.tsx`).
 	 *
 	 * @param array<string, array<string, mixed>> $merged
 	 * @return array<string, array<string, mixed>>
@@ -157,11 +120,8 @@ class BootstrapEmitter {
 	}
 
 	/**
-	 * Folds dev URLs into the prod manifest slice. For each `name => devUrl`
-	 * in the map: overwrites the existing entry's `file` field with the dev
-	 * URL when the name already exists, or synthesises a fresh entry
-	 * (`file` only — dev server resolves `.sass` imports via its own HMR
-	 * pipeline, so no `css[]` here) when the name is dev-only.
+	 * Folds dev URLs into the prod manifest slice. Dev-only components get a
+	 * `file`-only entry (dev server resolves `.sass` imports via HMR).
 	 *
 	 * @param array<string, array<string, mixed>> $slice
 	 * @param array<string, string>                $dev_manifest
@@ -179,19 +139,14 @@ class BootstrapEmitter {
 	}
 
 	/**
-	 * Reduces a manifest entry to the pair bootstrap consumes (`file`, `css`).
-	 * Drops Vite-internal fields (`isEntry`, `name`, `src`, `imports`) to keep
-	 * the blob compact.
+	 * Reduces a manifest entry to `(file, css)`. `file`/`css` are pre-resolved
+	 * to absolute URLs so the JS resolver can pass `entry.file` straight to
+	 * `import()`.
 	 *
-	 * `file` and `css` are pre-resolved to absolute URLs so the JS resolver
-	 * can pass `entry.file` straight to `import()` without having to know
-	 * the dist base path.
-	 *
-	 * `css` is FLATTENED to include transitive CSS from `imports[]` (via
-	 * `ManifestRegistry::collect_entry_css_urls`) — Vite's manifest format
-	 * leaves transitive CSS attached to imported chunks, NOT the consuming
-	 * entry. Flattening here lets downstream consumers (browser-side
-	 * `ComponentCssPlugin`, AJAX `updateStyles`) read a single flat list.
+	 * `css` is FLATTENED to include transitive CSS from `imports[]` — Vite's
+	 * manifest leaves transitive CSS attached to imported chunks, not the
+	 * consuming entry. Flattening lets downstream consumers (`ComponentCssPlugin`,
+	 * AJAX `updateStyles`) read a single flat list.
 	 *
 	 * @param array<string, array<string, mixed>> $merged
 	 * @param string                              $entry_key

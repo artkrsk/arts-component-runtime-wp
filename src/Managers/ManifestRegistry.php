@@ -31,23 +31,16 @@ class ManifestRegistry {
 
 	/**
 	 * Per-request memo of `collect_imports` results, keyed by start key.
-	 * The merged manifest is itself per-request cached in `self::$cache`,
-	 * so the import closure of any given key is stable for the lifetime
-	 * of the request. Multiple callers (`shape_entry`, CSS aggregation,
-	 * JS-URL aggregation) hit this for the same keys; memoization keeps
-	 * the BFS single-shot per `(request, key)`.
+	 * Multiple callers hit this for the same keys; memoization keeps the
+	 * BFS single-shot per `(request, key)`.
 	 *
 	 * @var array<string, string[]>
 	 */
 	private static array $imports_cache = array();
 
 	/**
-	 * Returns the merged manifest, reading every path returned by the
-	 * `arts_runtime/manifest_paths` filter. Missing or invalid files are
-	 * skipped (warning logged in debug mode).
-	 *
-	 * Default empty — products MUST register their build's manifest path
-	 * via the filter.
+	 * Reads every path from `arts_runtime/manifest_paths`. Missing or invalid
+	 * files are skipped (warning logged in debug mode).
 	 *
 	 * @return array<string, array<string, mixed>>
 	 */
@@ -99,10 +92,8 @@ class ManifestRegistry {
 	}
 
 	/**
-	 * Reads a manifest file from disk and JSON-decodes it. Returns `null`
-	 * (with debug log) on any failure: missing file, read failure, or
-	 * decode failure. Caller narrows keys — manifest entries are
-	 * string-keyed paths in practice, not asserted here.
+	 * Reads + JSON-decodes a manifest. Returns `null` (with debug log) on any
+	 * failure. Caller narrows keys.
 	 *
 	 * @return array<mixed, mixed>|null
 	 */
@@ -125,8 +116,7 @@ class ManifestRegistry {
 	}
 
 	/**
-	 * Emits a `[arts-runtime] $msg` line via `error_log` when `WP_DEBUG`
-	 * is defined and truthy. Single guard, single phpcs:ignore.
+	 * Single guard, single phpcs:ignore for `WP_DEBUG`-gated `error_log`.
 	 */
 	private static function log_debug( string $msg ): void {
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
@@ -147,10 +137,9 @@ class ManifestRegistry {
 
 	/**
 	 * Resolves a chunk path under `dist/` to a public URL using the entry's
-	 * `_arts_base_url` (stamped during merge). Returns an empty string when
-	 * the base URL is missing — in practice every entry read through
-	 * `get_merged()` carries one, so this only triggers when a custom filter
-	 * feeds raw entries without going through the registry.
+	 * `_arts_base_url`. Returns `''` when the base URL is missing — only
+	 * triggers when a custom filter feeds raw entries without going through
+	 * the registry.
 	 *
 	 * @param array<string, mixed> $entry
 	 * @param string               $relative_path
@@ -164,11 +153,6 @@ class ManifestRegistry {
 	}
 
 	/**
-	 * Resolves a component name to its manifest key. Delegates to
-	 * `ComponentLayoutResolver::resolve_key` — single source of truth for
-	 * both the forward (name → key) and inverse (key → name) directions
-	 * of the convention.
-	 *
 	 * @param array<string, array<string, mixed>> $merged
 	 * @param string                              $name
 	 * @return string|null
@@ -210,16 +194,11 @@ class ManifestRegistry {
 	}
 
 	/**
-	 * Returns the flat, deduped list of absolute JS chunk URLs for
-	 * `$entry_key` — the entry's own `file` plus the `file` of every
-	 * transitive import reachable via `collect_imports`. Each URL is
-	 * resolved against the OWNING entry's `_arts_base_url` so cross-build
-	 * merged manifests produce correct URLs even when imported chunks
-	 * live under a different base.
-	 *
-	 * Symmetric counterpart to `collect_entry_css_urls`. Used by
-	 * `PreloadEmitter` to build the `<link rel="modulepreload">` set;
-	 * caller iterates the returned URLs to emit one tag per chunk.
+	 * Flat, deduped list of absolute JS chunk URLs for `$entry_key` — entry's
+	 * own `file` plus every transitive import's `file`. Each URL resolves
+	 * against the OWNING entry's `_arts_base_url` so cross-build merged
+	 * manifests produce correct URLs when imported chunks live under a
+	 * different base.
 	 *
 	 * @param array<string, array<string, mixed>> $merged
 	 * @param string                              $entry_key
@@ -246,20 +225,14 @@ class ManifestRegistry {
 	}
 
 	/**
-	 * Returns the flat, deduped list of absolute CSS URLs for `$entry_key` —
-	 * the entry's own `css[]` plus the `css[]` of every transitive import
-	 * reachable via `collect_imports`. Each URL is resolved against the
-	 * OWNING entry's `_arts_base_url` so cross-build merged manifests
-	 * (multi-`arts_runtime/manifest_paths` setups) produce correct URLs
-	 * even when imported chunks live under a different base.
+	 * Flat, deduped list of absolute CSS URLs for `$entry_key` — entry's own
+	 * `css[]` plus every transitive import's `css[]`. Each URL resolves against
+	 * the OWNING entry's `_arts_base_url`.
 	 *
 	 * Vite/Rolldown's manifest format leaves transitive CSS attached to
-	 * imported chunks' own entries, NOT flattened onto the consuming
-	 * entry's `css[]`. Without this aggregation, shared CSS chunks
-	 * extracted across multiple components (e.g. when 2+ components
-	 * import the same external package whose entry has a side-effect
-	 * `import './style.sass'`) would be emitted by the build but never
-	 * loaded at runtime.
+	 * imported chunks' own entries, NOT flattened onto the consuming entry's
+	 * `css[]`. Without aggregation, shared CSS chunks extracted across
+	 * multiple components would never load at runtime.
 	 *
 	 * @param array<string, array<string, mixed>> $merged
 	 * @param string                              $entry_key
@@ -280,9 +253,6 @@ class ManifestRegistry {
 	}
 
 	/**
-	 * Appends an entry's own CSS URLs into `$urls`, skipping duplicates via
-	 * `$seen`. Extracted to keep `collect_entry_css_urls` readable.
-	 *
 	 * @param array<string, mixed> $entry
 	 * @param string[]             $urls
 	 * @param array<string, true>  $seen
@@ -305,11 +275,9 @@ class ManifestRegistry {
 	}
 
 	/**
-	 * Derives the public URL prefix for an entry's `file` / `css` paths
-	 * from the manifest filesystem path (parent of `.vite/manifest.json`),
-	 * mapped through `content_url`. Returns `''` if the manifest lives
-	 * outside `WP_CONTENT_DIR` — caller falls back gracefully via
-	 * `entry_asset_url`.
+	 * Derives the public URL prefix from the manifest filesystem path (parent
+	 * of `.vite/manifest.json`), mapped through `content_url`. Returns `''`
+	 * if the manifest lives outside `WP_CONTENT_DIR`.
 	 */
 	private static function derive_base_url( string $manifest_path ): string {
 		$dist_dir      = dirname( $manifest_path, 2 ); // strip `.vite/manifest.json`
@@ -333,10 +301,8 @@ class ManifestRegistry {
 	}
 
 	/**
-	 * Strips `$content_dir` from `$abs_path` and maps the relative remainder
-	 * through `content_url()`. Both inputs MUST already be normalized by
-	 * `wp_normalize_path` and the prefix relationship MUST hold — caller's
-	 * responsibility (this helper does not re-validate).
+	 * Inputs MUST be normalized by `wp_normalize_path` and the prefix
+	 * relationship MUST hold — caller's responsibility (no re-validation).
 	 */
 	private static function relative_to_content_url( string $abs_path, string $content_dir ): string {
 		$relative = ltrim( substr( $abs_path, strlen( $content_dir ) ), '/' );

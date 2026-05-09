@@ -7,58 +7,32 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Auto-discovers components by buffering the rendered HTML, scanning it for
- * `data-arts-component-name` attributes (via `ComponentScanner`), and
- * splicing emissions at TWO anchors based on what the browser benefits from
- * seeing early vs late:
+ * Auto-discovers components by buffering rendered HTML and splicing emissions
+ * at two anchors:
  *
- *   - EARLY anchor (right after `<meta charset>`): render-blocking and
- *     HTTP-discovery-sensitive payload — component CSS (`<style>` in inline
- *     mode, `<link rel="stylesheet">` stack in link mode) and the
- *     `<link rel="modulepreload">` set for component JS chunks. First-paint
- *     dependencies start as soon as possible; FOUC window stays minimal.
+ *   - EARLY (after `<meta charset>`): component CSS + `<link rel="modulepreload">`.
+ *     First-paint dependencies start early; FOUC window stays minimal.
+ *   - LATE (before `</head>`): coverage blob + manifest blob + bootstrap
+ *     `<script type="module">`. Keeps byte-zero region lean.
  *
- *   - LATE anchor (just before `</head>`): pure data + bootstrap — the
- *     `<script id="arts-cr-css-coverage">` JSON blob, the
- *     `<script id="arts-cr-manifest">` JSON blob, and (when emitted) the
- *     bootstrap `<script type="module" src="…">` tag. Keeps the byte-zero
- *     region lean and puts data next to its consumer.
+ * **Consumer contract**: any script reading `window.__artsManifest__` MUST be
+ * `defer`, `async`, `type="module"`, or `in_footer: true`. Buffer rewrite runs
+ * after `wp_head`, so non-deferred head consumers would race the late anchor.
  *
- * **Consumer contract**: any script reading `window.__artsManifest__` MUST
- * be `defer`, `async`, `type="module"`, or enqueued `in_footer: true`.
- * The buffer rewrite runs after `wp_head`, so any `wp_enqueue_script` in
- * head lands BEFORE the late anchor in document order. Deferred consumers
- * read the blob after full DOM parse — fine; non-deferred head consumers
- * would race.
+ * `$emitted` flag short-circuits subsequent `process()` calls so when LiteSpeed
+ * Cache re-passes the response, the second call returns the buffer untouched.
  *
- * Always opens an `ob_start` on `template_redirect:0`. A per-request
- * `$emitted` flag short-circuits subsequent calls so when other hooks
- * (e.g. LiteSpeed Cache via `CachePluginCompat`) re-pass the response
- * through `process`, the second call returns the buffer untouched.
- *
- * Filter `arts_runtime/auto_discover` (default `true`) opts the entire
- * pipeline out — when `false`, no hooks are registered and products wire
- * the emitters themselves.
+ * Filter `arts_runtime/auto_discover` (default `true`) opts the pipeline out.
  */
 class ComponentDiscovery {
-	/**
-	 * Set on first successful injection in this request — guards against
-	 * a second `process()` call (e.g. via `litespeed_buffer_after`) from
-	 * re-emitting payload into the already-injected buffer.
-	 */
+	/** Guards against a second `process()` re-emitting payload. */
 	private static bool $emitted = false;
 
 	private function __construct() {}
 
 	public static function register(): void {
-		// Bail at `plugins_loaded` for request types whose entry point
-		// never includes `wp-blog-header.php` (so `template_redirect`
-		// never fires; registering the action would be inert). Each
-		// guard is constant-/header-based, safe to call before the main
-		// query is built. `wp_doing_ajax` / `REST_REQUEST` /
-		// `wp_is_json_request` / `is_favicon` are intentionally NOT
-		// checked here — they're either redundant with `is_admin()`,
-		// evaluated false at this phase, or semantically mismatched.
+		// Bail for request types whose entry point never includes
+		// `wp-blog-header.php` (template_redirect never fires).
 		if (
 			is_admin()
 			|| ( defined( 'WP_CLI' ) && constant( 'WP_CLI' ) )
@@ -73,13 +47,9 @@ class ComponentDiscovery {
 		add_action(
 			'template_redirect',
 			static function (): void {
-				// At `template_redirect:0`, `wp` has fired so the main
-				// query is built and conditional tags are valid.
-				// `do_feed()` / `do_robots()` echo XML/plain-text into
-				// the active buffer, which the scanner would process for
-				// no gain. `is_favicon()` is omitted — `do_favicon()`
-				// calls `exit` before the buffer callback receives any
-				// content.
+				// `do_feed()` / `do_robots()` echo XML/plain-text the scanner
+				// would process for no gain. `do_favicon()` exits before the
+				// callback ever runs.
 				if ( is_feed() || is_robots() ) {
 					return;
 				}
@@ -90,11 +60,9 @@ class ComponentDiscovery {
 	}
 
 	/**
-	 * Scans `$buffer` for components and splices all emissions at their
-	 * anchors. Used as both the `ob_start` callback and the LiteSpeed Cache
-	 * `litespeed_buffer_after` filter — the `$emitted` flag ensures the
-	 * second pass is a no-op. `PHP_OUTPUT_HANDLER_CLEAN` phases are skipped
-	 * because a discarded buffer must not trigger side-effecting work.
+	 * Used as `ob_start` callback AND `litespeed_buffer_after` filter —
+	 * `$emitted` makes second pass a no-op. `PHP_OUTPUT_HANDLER_CLEAN` phases
+	 * skip because a discarded buffer must not trigger side effects.
 	 */
 	public static function process( string $buffer, int $phase = PHP_OUTPUT_HANDLER_END ): string {
 		if ( $buffer === '' || self::$emitted ) {
@@ -127,11 +95,7 @@ class ComponentDiscovery {
 		return $out;
 	}
 
-	/**
-	 * Splices `$payload` immediately after the document's `<meta charset>`
-	 * tag. Falls back to `</head>` when the charset meta isn't found, and
-	 * to a no-op when neither anchor exists (raw HTML fragment, edge case).
-	 */
+	/** Falls back to `</head>` when no charset meta found. */
 	private static function inject_after_charset( string $html, string $payload ): string {
 		$insert_at = self::find_charset_meta_end( $html );
 		if ( $insert_at !== null ) {
@@ -140,10 +104,6 @@ class ComponentDiscovery {
 		return self::inject_before_head_close( $html, $payload );
 	}
 
-	/**
-	 * Splices `$payload` immediately before the document's first `</head>`.
-	 * No-ops on a malformed document (no closing head tag).
-	 */
 	private static function inject_before_head_close( string $html, string $payload ): string {
 		$head_end = strpos( $html, '</head>' );
 		if ( $head_end !== false ) {
@@ -153,12 +113,8 @@ class ComponentDiscovery {
 	}
 
 	/**
-	 * Locates the byte offset immediately after the document's `<meta charset>`
-	 * tag. Searches only the first 2 KB (charset meta is always near the top).
-	 * Skips matches inside HTML comments so a charset declaration inside a comment
-	 * doesn't produce a wrong splice point.
-	 *
-	 * Returns null when no charset meta is found outside a comment.
+	 * Searches only the first 2 KB (charset meta sits near the top). Skips
+	 * matches inside HTML comments to avoid wrong splice points.
 	 */
 	private static function find_charset_meta_end( string $html ): ?int {
 		$window = substr( $html, 0, 2048 );

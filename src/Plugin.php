@@ -16,24 +16,14 @@ use Arts\TextSplitter\Plugin as TextSplitterPlugin;
 /**
  * Manifest-driven runtime emission plugin for `@arts/component-runtime`.
  *
- * Auto-discovers components by buffering the rendered HTML and scanning it
- * for `data-arts-component-name` attributes; the inline CSS, modulepreload
- * links, and bootstrap module are injected after the document's
- * `<meta charset>`. See `ComponentDiscovery` for the buffering branches and
- * the `arts_runtime/auto_discover` opt-out filter.
+ * Auto-discovers components by buffering rendered HTML and scanning for
+ * `data-arts-component-name`; CSS, modulepreloads, and bootstrap module
+ * are injected after `<meta charset>`. Opt-out via `arts_runtime/auto_discover`.
  *
- * Also bootstraps the framework's first-party UMD-script dependencies
- * (`GSAPLoader` and `TextSplitter`) so their classic scripts reach the
- * parser before the bootstrap module evaluates. This keeps `window.gsap`,
- * `window.ScrollTrigger`, `window.SplitText`, and `window.TextReveal`
- * pointing at single class instances shared between the app bundle and
- * dev-served component modules — components externalize these via
- * `peerDependencyGlobals` and reach for the same window references.
- *
- * Components are dynamic-imported by the bootstrap module from a Vite
- * manifest emitted by the consumer's build (e.g.
- * `wp-content/uploads/arts-runtime-dist/.vite/manifest.json`); there is
- * no IIFE registry layer.
+ * Bootstraps `GSAPLoader` and `TextSplitter` so their classic scripts reach
+ * the parser before the bootstrap module evaluates — keeps `window.gsap`,
+ * `window.ScrollTrigger`, `window.SplitText`, `window.TextReveal` pointing
+ * at single shared instances.
  *
  * @extends BasePlugin<ManagersContainer>
  * @package Arts\ComponentRuntime
@@ -64,9 +54,7 @@ class Plugin extends BasePlugin {
 	 * @return array<string, class-string>
 	 */
 	protected function get_managers_classes(): array {
-		// `ManifestRegistry`, `ComponentScanner`, the three emitters, and
-		// `ComponentDiscovery` are static utility classes — they don't fit
-		// the BaseManager pattern. Hooks are registered directly in
+		// Runtime layer uses static utility classes; hooks register in
 		// `do_after_init_managers`.
 		return array();
 	}

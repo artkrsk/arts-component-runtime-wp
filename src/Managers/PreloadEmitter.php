@@ -25,11 +25,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 class PreloadEmitter {
 	private function __construct() {}
 
-	/**
-	 * Returns `<link rel="modulepreload">` tags for every registered component
-	 * and its transitive shared-chunk closure. Emitted at the early anchor so
-	 * the browser starts parallel fetches while parsing the bootstrap module.
-	 */
 	public static function generate(): string {
 		$component_names = ComponentScanner::get_components();
 		if ( empty( $component_names ) ) {

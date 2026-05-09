@@ -8,14 +8,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /**
  * Builds `<script id="…" type="application/json">` blobs from PHP arrays.
- *
  * Centralises `wp_json_encode` + `wp_get_inline_script_tag` with consistent
  * encoding flags (`JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_SLASHES`)
- * so every JSON blob in the document head is encoded identically and safe
- * to splice verbatim.
- *
- * Returns an empty string when the payload can't be JSON-encoded; callers
- * decide whether that's a hard skip or a soft one.
+ * so every blob is safe to splice verbatim.
  */
 class JsonBlobEmitter {
 	private function __construct() {}

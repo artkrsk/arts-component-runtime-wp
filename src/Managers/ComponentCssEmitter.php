@@ -7,57 +7,26 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Emits per-component CSS for components the scanner saw on this PHP
- * render. Two modes, controlled by the `arts_runtime/component_css/mode`
- * filter:
+ * Emits per-component CSS for components the scanner saw this render. Two
+ * modes via `arts_runtime/component_css/mode` filter:
  *
- *   - `'inline'` (default) — single `<style id="arts-cr-component-css"
- *                            data-noptimize="1">` blob containing every
- *                            scanned component's CSS, fenced by
- *                            `/* arts:component-css:start <basename> *\/`
- *                            markers. Best for FOUC prevention and small
- *                            payloads — no extra HTTP round-trip.
+ *   - `'inline'` (default) — single `<style id="arts-cr-component-css">` blob.
+ *                            Best for FOUC prevention; no extra round-trip.
+ *   - `'link'`             — one `<link rel="stylesheet">` per CSS chunk.
+ *                            Best for HTTP/2 prioritisation + browser caching.
  *
- *   - `'link'`              — one `<link rel="stylesheet"
- *                            id="arts-cr-<basename>-css">` per CSS chunk.
- *                            Best when CSS is large and you want to leverage
- *                            HTTP/2 prioritisation, browser caching, or
- *                            stylesheet-level CSS Modules.
+ * Components first-seen at RUNTIME (Elementor editor drops, AJAX-discovered)
+ * are handled by `ComponentCssPlugin` JS-side. Both modes emit a coverage
+ * blob (`<script id="arts-cr-css-coverage">`) listing component names already
+ * styled, so the JS plugin dedups runtime injection.
  *
- * Components first-seen at RUNTIME (Elementor editor drops, AJAX-discovered
- * components on the next page) are NOT covered here — that's the
- * `ComponentCssPlugin`'s job on the JS side. To prevent the JS plugin from
- * double-loading something this emitter already covered, both modes also
- * emit a `<script id="arts-cr-css-coverage" type="application/json">` blob
- * listing the component names already styled by this render. JS plugin
- * reads it once and dedups injection against it.
+ * Styles splice at the EARLY anchor (after `<meta charset>`) for FOUC + modulepreload
+ * priority; coverage blob splices at the LATE anchor (before `</head>`).
  *
- * Per-component CSS URLs come from the merged Vite manifest's
- * `entry['css'][]` array (populated when components import their `.sass`
- * via Vite-native preprocessing). Components without CSS imports
- * (e.g. a TS-only component) get an empty `entry.css[]`; this emitter
- * silently skips them.
- *
- * The emitter exposes the styles markup and the coverage blob via two
- * separate accessors so `ComponentDiscovery` can splice each at its own
- * anchor: the styles go to the EARLY anchor (right after `<meta charset>`)
- * for FOUC prevention and modulepreload-priority discovery; the coverage
- * blob goes to the LATE anchor (just before `</head>`) where it sits next
- * to the manifest blob and away from the byte-zero region. A single
- * internal walk feeds both.
- *
- * Filters owned by this emitter:
- *
- *   - `arts_runtime/component_css/mode`        — string filter, returns
- *                                                `'inline'` or `'link'`.
- *                                                Default `'inline'`. Unknown
- *                                                values fall back to inline.
- *
- *   - `arts_runtime/component_css/should_skip` — per-component override
- *                                                for the skip decision
- *                                                (3-arg: default boolean,
- *                                                entry array, component
- *                                                name). Default `false`.
+ * Filters:
+ *   - `arts_runtime/component_css/mode`        — `'inline'` (default) | `'link'`.
+ *   - `arts_runtime/component_css/should_skip` — per-component skip override
+ *                                                (3-arg: bool, entry, name).
  */
 class ComponentCssEmitter {
 	private const MODE_INLINE = 'inline';
@@ -68,10 +37,7 @@ class ComponentCssEmitter {
 	private const COVERAGE_BLOB_ID = 'arts-cr-css-coverage';
 
 	/**
-	 * Per-request cache of the rendered (`styles`, `coverage`) pair. The
-	 * scanner walk + skip-filter + URL collection runs ONCE per request;
-	 * `generate_styles()` and `generate_coverage_blob()` both consume
-	 * this cache so callers can splice each piece at its own anchor.
+	 * Per-request cache: scanner walk + skip-filter + URL collection runs once.
 	 *
 	 * @var array{styles: string, coverage: string}|null
 	 */
@@ -79,32 +45,15 @@ class ComponentCssEmitter {
 
 	private function __construct() {}
 
-	/**
-	 * Returns the CSS markup (`<style>` blob in inline mode, stack of
-	 * `<link>` tags in link mode) for every scanned component, with no
-	 * coverage blob. Splice at the early anchor so render-blocking CSS
-	 * starts as soon as possible.
-	 */
 	public static function generate_styles(): string {
 		return self::compute_bundle()['styles'];
 	}
 
-	/**
-	 * Returns the `<script id="arts-cr-css-coverage">` JSON blob that the
-	 * JS-side `ComponentCssPlugin` reads to dedup runtime injection. Pure
-	 * data — splice at the late anchor next to the manifest blob.
-	 */
 	public static function generate_coverage_blob(): string {
 		return self::compute_bundle()['coverage'];
 	}
 
 	/**
-	 * Walks every registered component once, builds and caches both the
-	 * styles markup and the coverage blob. Subsequent calls return the
-	 * cached pair — keeps the per-component `should_skip` filter and the
-	 * `collect_entry_css_urls` walk single-shot per request even though
-	 * the two payloads splice at different anchors.
-	 *
 	 * @return array{styles: string, coverage: string}
 	 */
 	private static function compute_bundle(): array {
@@ -116,9 +65,6 @@ class ComponentCssEmitter {
 	}
 
 	/**
-	 * Underlying walk that produces the (`styles`, `coverage`) pair —
-	 * extracted so `compute_bundle()` stays a thin "read-or-fill" cache.
-	 *
 	 * @return array{styles: string, coverage: string}
 	 */
 	private static function compute_bundle_uncached(): array {
@@ -153,9 +99,8 @@ class ComponentCssEmitter {
 	}
 
 	/**
-	 * Link-mode collector — one chunk record per unique CSS URL across every
-	 * registered component. Dedups by URL (no filesystem inversion needed),
-	 * so CDN-rewritten content URLs still produce valid `<link>` tags.
+	 * Dedups by URL (no filesystem inversion), so CDN-rewritten content URLs
+	 * still produce valid `<link>` tags.
 	 *
 	 * @param string[] $component_names
 	 * @return array{chunks: array<int, array{url: string, basename: string}>, covered: string[]}
@@ -195,9 +140,8 @@ class ComponentCssEmitter {
 	}
 
 	/**
-	 * Inline-mode collector — one chunk record per unique on-disk CSS file
-	 * across every registered component. Dedups by local path; URLs that
-	 * don't invert (CDN-rewritten, missing on disk) are silently skipped.
+	 * Dedups by local path; URLs that don't invert (CDN-rewritten, missing
+	 * on disk) are silently skipped.
 	 *
 	 * @param string[] $component_names
 	 * @return array{chunks: array<int, array{url: string, local_path: string, basename: string}>, covered: string[]}
@@ -242,10 +186,7 @@ class ComponentCssEmitter {
 	}
 
 	/**
-	 * Resolves a component name to its CSS URL list — manifest key lookup +
-	 * `should_skip` filter + transitive CSS aggregation. Returns `null`
-	 * when the component is unknown, skipped, or has no CSS to emit; both
-	 * collectors treat the three cases identically.
+	 * Returns `null` when the component is unknown, skipped, or has no CSS.
 	 *
 	 * @param array<string, array<string, mixed>> $merged
 	 * @return string[]|null
@@ -281,12 +222,7 @@ class ComponentCssEmitter {
 		return empty( $urls ) ? null : $urls;
 	}
 
-	/**
-	 * Resolves the active CSS-emission mode. Reads the
-	 * `arts_runtime/component_css/mode` filter and falls back to inline
-	 * for any unrecognised value (defensive against typos in product
-	 * filter callbacks).
-	 */
+	/** Falls back to inline for any unrecognised value (defensive). */
 	private static function is_link_mode(): bool {
 		/**
 		 * Filter the component CSS emission mode.
@@ -298,10 +234,8 @@ class ComponentCssEmitter {
 	}
 
 	/**
-	 * Emits a single concatenated `<style>` blob containing every chunk's
-	 * CSS body. Each segment is fenced by `arts:component-css:start/end
-	 * <basename>` markers so consumers can debug which file contributed
-	 * which rules.
+	 * Each segment is fenced by `arts:component-css:start/end <basename>`
+	 * markers for debug.
 	 *
 	 * @param array<int, array{url: string, local_path: string, basename: string}> $chunks
 	 */
@@ -323,22 +257,17 @@ class ComponentCssEmitter {
 			return '';
 		}
 
-		// Body intentionally NOT esc_html'd — CSS must reach the parser
-		// verbatim. The id/data-noptimize attrs are esc_attr'd; the CSS body
-		// itself can't carry user input through `file_get_contents` of
-		// build-time-hashed chunks.
+		// CSS body intentionally NOT esc_html'd — must reach the parser verbatim.
 		return '<style id="' . esc_attr( self::STYLE_ID ) . '" data-noptimize="1">' . "\n"
 			. implode( "\n", $parts )
 			. "\n" . '</style>' . "\n";
 	}
 
 	/**
-	 * Emits one `<link rel="stylesheet">` per chunk. Stable per-chunk id
-	 * (`arts-cr-<basename without extension>-css`) lets consumers / cache
-	 * plugins target individual stylesheets. The id format matches the
-	 * one `ComponentCssPlugin.injectLink` synthesises on the JS side, so
-	 * link-mode emissions get id-deduped against any plugin-injected
-	 * `<link>` for the same chunk without coverage-blob coordination.
+	 * Stable per-chunk id (`arts-cr-<basename>-css`) matches what
+	 * `ComponentCssPlugin.injectLink` synthesises JS-side, so link-mode
+	 * emissions id-dedup against plugin injection without coverage-blob
+	 * coordination.
 	 *
 	 * @param array<int, array{url: string, basename: string}> $chunks
 	 */
@@ -353,10 +282,8 @@ class ComponentCssEmitter {
 	}
 
 	/**
-	 * Emits the coverage blob the JS-side `ComponentCssPlugin` reads to
-	 * dedup runtime CSS injection. Empty array → empty blob (still
-	 * emitted so the plugin's lookup doesn't fall back to "uncovered"
-	 * for everything).
+	 * Empty array → empty blob (still emitted so the JS plugin's lookup
+	 * doesn't fall back to "uncovered" for everything).
 	 *
 	 * @param string[] $covered
 	 */

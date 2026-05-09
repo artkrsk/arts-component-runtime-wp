@@ -9,11 +9,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Container for manager instances. Empty no-op subclass — the manifest-driven
- * runtime layer uses static utility classes (`ManifestRegistry`,
- * `ComponentScanner`, `PreloadEmitter`) rather than `BaseManager` subclasses.
- * Kept for `BasePlugin<TManagers>` typing parity with the rest of the Arts
- * framework packages.
+ * Empty no-op — runtime uses static utility classes, not `BaseManager`
+ * subclasses. Kept for `BasePlugin<TManagers>` typing parity.
  */
 class ManagersContainer extends BaseManagersContainer {
 }

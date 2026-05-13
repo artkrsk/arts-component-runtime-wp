@@ -192,6 +192,17 @@ class ComponentCssEmitter {
 	/**
 	 * Returns `null` when the component is unknown, skipped, or has no CSS.
 	 *
+	 * Components present in the `arts_runtime/dev_manifest` filter are auto-
+	 * skipped: their CSS is managed by the framework's HMR snippet
+	 * (`<style id="arts-cr-<name>-inline">`) which updates on SASS save.
+	 * Without the skip, the cached prod chunk would be inlined into
+	 * `<style id="arts-cr-component-css">` at the EARLY head anchor — and
+	 * CSS cascade leaves earlier-declared properties in force whenever a
+	 * later rule omits them. Net effect: source edits that ADD or CHANGE
+	 * a property hot-swap correctly via the late HMR style, but edits
+	 * that REMOVE a property silently fail until the next `pnpm build`
+	 * refreshes the blob.
+	 *
 	 * @param array<string, array<string, mixed>> $merged
 	 * @return string[]|null
 	 */
@@ -202,11 +213,15 @@ class ComponentCssEmitter {
 		}
 		$entry = $merged[ $entry_key ];
 
+		if ( self::is_dev_served( $name ) ) {
+			return null;
+		}
+
 		/**
 		 * Filter the per-component CSS skip decision.
 		 *
-		 * Default `false` — products that run their own dev servers wire
-		 * skip-during-dev logic here.
+		 * Default `false` — products that need additional skip logic beyond
+		 * the built-in dev-manifest check wire it here.
 		 *
 		 * @param bool                 $should_skip Default skip decision.
 		 * @param array<string, mixed> $entry       The merged manifest entry.
@@ -224,6 +239,32 @@ class ComponentCssEmitter {
 
 		$urls = ManifestRegistry::collect_entry_css_urls( $merged, $entry_key );
 		return empty( $urls ) ? null : $urls;
+	}
+
+	/**
+	 * Per-request memo of the `arts_runtime/dev_manifest` filter, keyed by
+	 * component name. Mirrors what `BootstrapEmitter` consults for its own
+	 * dev override — single source of truth for "this component is served
+	 * by Vite right now."
+	 *
+	 * @var array<string, bool>|null
+	 */
+	private static ?array $dev_manifest_cache = null;
+
+	private static function is_dev_served( string $name ): bool {
+		if ( self::$dev_manifest_cache === null ) {
+			$dev_manifest = apply_filters( 'arts_runtime/dev_manifest', array() );
+			$map          = array();
+			if ( is_array( $dev_manifest ) ) {
+				foreach ( $dev_manifest as $key => $url ) {
+					if ( is_string( $key ) && is_string( $url ) && $url !== '' ) {
+						$map[ $key ] = true;
+					}
+				}
+			}
+			self::$dev_manifest_cache = $map;
+		}
+		return isset( self::$dev_manifest_cache[ $name ] );
 	}
 
 	/** Falls back to inline for any unrecognised value (defensive). */

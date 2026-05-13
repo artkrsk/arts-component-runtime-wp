@@ -120,8 +120,14 @@ class BootstrapEmitter {
 	}
 
 	/**
-	 * Folds dev URLs into the prod manifest slice. Dev-only components get a
-	 * `file`-only entry (dev server resolves `.sass` imports via HMR).
+	 * Folds dev URLs into the prod manifest slice. Dev-served components get a
+	 * `file`-only entry: the dev server resolves `.sass` imports via the
+	 * framework's HMR snippet (`<style id="arts-cr-<name>-inline">`), so the
+	 * prod-build `css[]` from the cached manifest MUST be dropped — otherwise
+	 * `ComponentCssPlugin` keeps injecting `<link>` to the stale prod chunk,
+	 * which is appended after the HMR `<style>` and wins the cascade for any
+	 * same-specificity rule. Net effect before the unset: SASS edits compile
+	 * and hot-swap correctly, but the stale prod link masks the swap.
 	 *
 	 * @param array<string, array<string, mixed>> $slice
 	 * @param array<string, string>                $dev_manifest
@@ -131,6 +137,7 @@ class BootstrapEmitter {
 		foreach ( $dev_manifest as $name => $dev_url ) {
 			if ( isset( $slice[ $name ] ) && is_array( $slice[ $name ] ) ) {
 				$slice[ $name ]['file'] = $dev_url;
+				unset( $slice[ $name ]['css'] );
 			} else {
 				$slice[ $name ] = array( 'file' => $dev_url );
 			}

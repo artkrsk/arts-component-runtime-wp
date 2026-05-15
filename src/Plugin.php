@@ -41,8 +41,6 @@ class Plugin extends BasePlugin {
 	}
 
 	protected function get_managers_classes(): array {
-		// Runtime layer uses static utility classes; hooks register in
-		// `do_after_init_managers`.
 		return array();
 	}
 

@@ -15,8 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  *
  * Direct string concat for `<link rel="modulepreload">` — WordPress has no
  * native helper for it, and `wp_register_script_module` only emits preloads
- * for STATIC import dependencies (line 485 of `class-wp-script-modules.php`
- * filters `array('static')`); component chunks reached via dynamic
+ * for STATIC import dependencies; component chunks reached via dynamic
  * `import()` from the bootstrap won't get auto-preloaded by WP.
  *
  * Owns no filters — the data it walks comes from `ComponentScanner` and

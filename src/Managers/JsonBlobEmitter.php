@@ -7,10 +7,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Builds `<script id="…" type="application/json">` blobs from PHP arrays.
- * Centralises `wp_json_encode` + `wp_get_inline_script_tag` with consistent
- * encoding flags (`JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_SLASHES`)
- * so every blob is safe to splice verbatim.
+ * JSON blob emitter with `JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_SLASHES`
+ * — every emitted blob is safe to splice verbatim into HTML without escaping
+ * the `<`/`&` characters that could otherwise break out of `<script>`.
  */
 class JsonBlobEmitter {
 	private function __construct() {}

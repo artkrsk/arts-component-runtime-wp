@@ -77,8 +77,13 @@ class ComponentLayoutResolver {
 		}
 		$parts = array( preg_quote( $segments[0], '#' ) );
 		$count = count( $segments );
+		// Name character class mirrors `ComponentScanner::is_valid_component_name`
+		// so vendor-namespaced names like `@vendor/Hero` round-trip through the
+		// layout resolver. Greedy match with `\1` back-reference forces the
+		// captured name to be consistent across template segments and the
+		// trailing `\.(ts|tsx)$` anchor disambiguates where the name ends.
 		for ( $i = 1; $i < $count; $i++ ) {
-			$parts[] = ( $i === 1 ) ? '([^/]+)' : '\\1';
+			$parts[] = ( $i === 1 ) ? '([a-zA-Z0-9_@/-]+)' : '\\1';
 			$parts[] = preg_quote( $segments[ $i ], '#' );
 		}
 		$ext_alt = implode( '|', self::EXTENSIONS );

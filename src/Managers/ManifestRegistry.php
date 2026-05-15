@@ -288,9 +288,10 @@ class ManifestRegistry {
 			return self::relative_to_content_url( $dist_dir_norm, $content_dir );
 		}
 
-		// Symlink fallback: PHP resolves __FILE__ to realpath on Linux/macOS (PHP 5.3+)
-		// but WP_CONTENT_DIR is raw ABSPATH concatenation with no realpath() call.
-		// The two diverge when the plugin directory is symlinked (confirmed case: Hostinger).
+		// Symlink fallback: PHP resolves `__FILE__` to its realpath on Linux/macOS
+		// but `WP_CONTENT_DIR` is raw `ABSPATH` concatenation with no `realpath()`
+		// call. The two diverge when the plugin directory is symlinked
+		// (confirmed case: Hostinger).
 		$real_dist_dir    = wp_normalize_path( (string) realpath( $dist_dir ) );
 		$real_content_dir = wp_normalize_path( (string) realpath( WP_CONTENT_DIR ) );
 		if ( $real_content_dir && $real_dist_dir && strpos( $real_dist_dir, $real_content_dir ) === 0 ) {

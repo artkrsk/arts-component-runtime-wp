@@ -10,8 +10,6 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Scans rendered HTML for `data-arts-component-name` attributes and
  * accumulates the unique set for the current request. The three emitters
  * read the union at injection time.
- *
- * Per-request statics auto-reset on next PHP request — no manual reset needed.
  */
 class ComponentScanner {
 	/** @var array<string, true> */

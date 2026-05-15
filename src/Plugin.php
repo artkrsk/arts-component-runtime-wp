@@ -26,42 +26,26 @@ use Arts\TextSplitter\Plugin as TextSplitterPlugin;
  * at single shared instances.
  *
  * @extends BasePlugin<ManagersContainer>
- * @package Arts\ComponentRuntime
  */
 class Plugin extends BasePlugin {
-	/**
-	 * @return array<string, mixed>
-	 */
 	protected function get_default_config(): array {
 		return array();
 	}
 
-	/**
-	 * @return array<string, string>
-	 */
 	protected function get_default_strings(): array {
 		return array();
 	}
 
-	/**
-	 * @return string
-	 */
 	protected function get_default_run_action(): string {
 		return 'plugins_loaded';
 	}
 
-	/**
-	 * @return array<string, class-string>
-	 */
 	protected function get_managers_classes(): array {
 		// Runtime layer uses static utility classes; hooks register in
 		// `do_after_init_managers`.
 		return array();
 	}
 
-	/**
-	 * @return void
-	 */
 	protected function do_after_init_managers(): void {
 		GSAPLoaderPlugin::instance();
 		TextSplitterPlugin::instance();

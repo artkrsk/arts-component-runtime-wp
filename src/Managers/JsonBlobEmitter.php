@@ -16,7 +16,6 @@ class JsonBlobEmitter {
 	private function __construct() {}
 
 	/**
-	 * @param string                                  $id
 	 * @param array<string, mixed>|array<int, mixed> $payload JSON-serialisable payload.
 	 */
 	public static function emit( string $id, array $payload ): string {

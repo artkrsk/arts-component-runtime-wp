@@ -21,8 +21,8 @@ class CachePluginCompat {
 	public static function register(): void {
 		// LiteSpeed Cache: its outer buffer fires after the standard
 		// `template_redirect:0` `ob_start` callback, so route through
-		// `ComponentDiscovery::process` again. The `MARKER` check
-		// inside `process` prevents double-injection.
+		// `ComponentDiscovery::process` again. The `$emitted` flag
+		// inside `process` short-circuits the second pass.
 		if ( defined( 'LSCWP_V' ) ) {
 			add_filter( 'litespeed_buffer_after', array( ComponentDiscovery::class, 'process' ), 999 );
 		}

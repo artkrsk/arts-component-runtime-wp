@@ -41,9 +41,13 @@
     "arts/utilities": "@dev"
   },
   "require-dev": {
+    "brain/monkey": "^2.6",
     "dealerdirect/phpcodesniffer-composer-installer": "^1.0",
     "ergebnis/composer-normalize": "^2.48",
+    "mockery/mockery": "^1.6",
     "phpstan/phpstan": "^2.0",
+    "phpunit/phpunit": "^9.6",
+    "roots/wordpress": "^6.8",
     "squizlabs/php_codesniffer": "^3.13.4",
     "szepeviktor/phpstan-wordpress": "^2.0",
     "wp-coding-standards/wpcs": "^3.0"
@@ -53,14 +57,27 @@
       "Arts\\ComponentRuntime\\": "src/"
     }
   },
+  "autoload-dev": {
+    "psr-4": {
+      "Arts\\ComponentRuntime\\Tests\\": "tests/php/"
+    },
+    "classmap": [
+      "wp-core/wp-includes/html-api/"
+    ]
+  },
   "minimum-stability": "stable",
   "config": {
     "allow-plugins": {
+      "composer/installers": true,
       "dealerdirect/phpcodesniffer-composer-installer": true,
-      "ergebnis/composer-normalize": true
+      "ergebnis/composer-normalize": true,
+      "roots/wordpress-core-installer": true
     },
     "optimize-autoloader": true,
     "sort-packages": true
+  },
+  "extra": {
+    "wordpress-install-dir": "wp-core"
   },
   "scripts": {
     "check": ["@phpcs", "@phpstan"],
@@ -69,6 +86,8 @@
     "phpcbf": "phpcbf --standard=phpcs.xml",
     "phpcs": "phpcs --standard=phpcs.xml",
     "phpstan": "phpstan analyse --memory-limit=1G",
-    "phpstan:baseline": "phpstan analyse --memory-limit=1G --generate-baseline"
+    "phpstan:baseline": "phpstan analyse --memory-limit=1G --generate-baseline",
+    "test": "phpunit",
+    "test:coverage": "XDEBUG_MODE=coverage phpunit --coverage-html=coverage --coverage-text"
   }
 }

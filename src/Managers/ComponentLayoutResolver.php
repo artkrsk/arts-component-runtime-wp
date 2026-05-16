@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Arts\ComponentRuntime\Managers;
 
 if ( ! defined( 'ABSPATH' ) ) {

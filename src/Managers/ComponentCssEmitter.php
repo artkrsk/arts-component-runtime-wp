@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Arts\ComponentRuntime\Managers;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -109,36 +111,20 @@ class ComponentCssEmitter {
 	 * @return array{chunks: array<int, array{url: string, basename: string}>, covered: string[]}
 	 */
 	private static function collect_link_chunks( array $component_names ): array {
-		$chunks  = array();
-		$covered = array();
-		$seen    = array();
-		$merged  = ManifestRegistry::get_merged();
-
-		foreach ( $component_names as $name ) {
-			$urls = self::resolve_component_css_urls( $merged, $name );
-			if ( $urls === null ) {
-				continue;
-			}
-			$has_css = false;
-			foreach ( $urls as $url ) {
-				$has_css = true;
-				if ( isset( $seen[ $url ] ) ) {
-					continue;
-				}
-				$seen[ $url ] = true;
-				$chunks[]     = array(
-					'url'      => $url,
-					'basename' => basename( (string) wp_parse_url( $url, PHP_URL_PATH ) ),
+		return self::collect_chunks(
+			$component_names,
+			/**
+			 * @return array{dedup_key: string, chunk: array{url: string, basename: string}}
+			 */
+			static function ( string $url ): array {
+				return array(
+					'dedup_key' => $url,
+					'chunk'     => array(
+						'url'      => $url,
+						'basename' => basename( (string) wp_parse_url( $url, PHP_URL_PATH ) ),
+					),
 				);
 			}
-			if ( $has_css ) {
-				$covered[] = $name;
-			}
-		}
-
-		return array(
-			'chunks'  => $chunks,
-			'covered' => $covered,
 		);
 	}
 
@@ -150,6 +136,46 @@ class ComponentCssEmitter {
 	 * @return array{chunks: array<int, array{url: string, local_path: string, basename: string}>, covered: string[]}
 	 */
 	private static function collect_inline_chunks( array $component_names ): array {
+		return self::collect_chunks(
+			$component_names,
+			/**
+			 * @return array{dedup_key: string, chunk: array{url: string, local_path: string, basename: string}}|null
+			 */
+			static function ( string $url ): ?array {
+				$local_path = WpContentPathInverter::url_to_local_path( $url );
+				if ( $local_path === null ) {
+					return null;
+				}
+				return array(
+					'dedup_key' => $local_path,
+					'chunk'     => array(
+						'url'        => $url,
+						'local_path' => $local_path,
+						'basename'   => basename( $local_path ),
+					),
+				);
+			}
+		);
+	}
+
+	/**
+	 * Outer loop shared by `collect_link_chunks` / `collect_inline_chunks`.
+	 * The per-URL `$transformer` callback returns either:
+	 *  - `null` when the URL should be silently skipped (e.g. inline mode
+	 *    can't invert a CDN-rewritten URL to a local path),
+	 *  - `array{dedup_key: string, chunk: TChunk}` otherwise.
+	 *
+	 * Dedup is by `dedup_key` (mode-specific — URL vs local path). Coverage
+	 * is recorded per component whenever ANY URL passes the transformer,
+	 * even when the chunk turns out to be a duplicate of one already
+	 * collected.
+	 *
+	 * @template TChunk of array<string, mixed>
+	 * @param string[] $component_names
+	 * @param callable(string): (array{dedup_key: string, chunk: TChunk}|null) $transformer
+	 * @return array{chunks: array<int, TChunk>, covered: string[]}
+	 */
+	private static function collect_chunks( array $component_names, callable $transformer ): array {
 		$chunks  = array();
 		$covered = array();
 		$seen    = array();
@@ -162,20 +188,16 @@ class ComponentCssEmitter {
 			}
 			$has_css = false;
 			foreach ( $urls as $url ) {
-				$local_path = WpContentPathInverter::url_to_local_path( $url );
-				if ( $local_path === null ) {
+				$result = $transformer( $url );
+				if ( $result === null ) {
 					continue;
 				}
 				$has_css = true;
-				if ( isset( $seen[ $local_path ] ) ) {
+				if ( isset( $seen[ $result['dedup_key'] ] ) ) {
 					continue;
 				}
-				$seen[ $local_path ] = true;
-				$chunks[]            = array(
-					'url'        => $url,
-					'local_path' => $local_path,
-					'basename'   => basename( $local_path ),
-				);
+				$seen[ $result['dedup_key'] ] = true;
+				$chunks[]                     = $result['chunk'];
 			}
 			if ( $has_css ) {
 				$covered[] = $name;
@@ -241,29 +263,14 @@ class ComponentCssEmitter {
 	}
 
 	/**
-	 * Per-request memo of the `arts_runtime/dev_manifest` filter, keyed by
-	 * component name. Mirrors what `BootstrapEmitter` consults for its own
-	 * dev override — single source of truth for "this component is served
-	 * by Vite right now."
-	 *
-	 * @var array<string, bool>|null
+	 * Delegates to `ManifestRegistry::get_dev_manifest()` — single source of
+	 * truth for the `arts_runtime/dev_manifest` filter result. Returns
+	 * `true` when `$name` is currently being served by the Vite dev server
+	 * (and therefore its prod-cached CSS should not be inlined here — the
+	 * framework's HMR `<style>` handles styling at runtime).
 	 */
-	private static ?array $dev_manifest_cache = null;
-
 	private static function is_dev_served( string $name ): bool {
-		if ( self::$dev_manifest_cache === null ) {
-			$dev_manifest = apply_filters( 'arts_runtime/dev_manifest', array() );
-			$map          = array();
-			if ( is_array( $dev_manifest ) ) {
-				foreach ( $dev_manifest as $key => $url ) {
-					if ( is_string( $key ) && is_string( $url ) && $url !== '' ) {
-						$map[ $key ] = true;
-					}
-				}
-			}
-			self::$dev_manifest_cache = $map;
-		}
-		return isset( self::$dev_manifest_cache[ $name ] );
+		return isset( ManifestRegistry::get_dev_manifest()[ $name ] );
 	}
 
 	/** Falls back to inline for any unrecognised value (defensive). */

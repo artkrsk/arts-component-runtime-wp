@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Arts\ComponentRuntime\Managers;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -37,6 +39,16 @@ class ManifestRegistry {
 	 * @var array<string, string[]>
 	 */
 	private static array $imports_cache = array();
+
+	/**
+	 * Per-request memo of the `arts_runtime/dev_manifest` filter result.
+	 * Single source of truth — `BootstrapEmitter::resolve_dev_manifest`
+	 * and `ComponentCssEmitter::is_dev_served` both delegate here so the
+	 * filter dispatches once per request even when both emitters run.
+	 *
+	 * @var array<string, string>|null
+	 */
+	private static ?array $dev_manifest_cache = null;
 
 	/**
 	 * Reads every path from `arts_runtime/manifest_paths`. Missing or invalid
@@ -122,6 +134,41 @@ class ManifestRegistry {
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
 			error_log( '[arts-runtime] ' . $msg ); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
 		}
+	}
+
+	/**
+	 * Per-request resolution of the `arts_runtime/dev_manifest` filter.
+	 * Map of `ComponentName => devUrl` for components currently served by
+	 * the Vite dev server. Returns `[]` when no filter subscriber is
+	 * registered or the filter returns a non-array value.
+	 *
+	 * Centralized here so both `BootstrapEmitter` (folds dev URLs into
+	 * the manifest slice) and `ComponentCssEmitter` (skips prod CSS for
+	 * dev-served components — see ComponentCssEmitter::is_dev_served)
+	 * share a single filter dispatch + per-request memo.
+	 *
+	 * @return array<string, string>
+	 */
+	public static function get_dev_manifest(): array {
+		if ( self::$dev_manifest_cache !== null ) {
+			return self::$dev_manifest_cache;
+		}
+		/**
+		 * Filter the dev-manifest map.
+		 *
+		 * @param array<string, string> $dev_manifest
+		 */
+		$dev_manifest = apply_filters( 'arts_runtime/dev_manifest', array() );
+		$normalized   = array();
+		if ( is_array( $dev_manifest ) ) {
+			foreach ( $dev_manifest as $name => $url ) {
+				if ( is_string( $name ) && is_string( $url ) && $url !== '' ) {
+					$normalized[ $name ] = $url;
+				}
+			}
+		}
+		self::$dev_manifest_cache = $normalized;
+		return self::$dev_manifest_cache;
 	}
 
 	/**

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Arts\ComponentRuntime\Containers;
 
 use Arts\Base\Containers\ManagersContainer as BaseManagersContainer;

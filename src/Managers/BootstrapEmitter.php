@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Arts\ComponentRuntime\Managers;
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -35,6 +37,14 @@ class BootstrapEmitter {
 	/** Overridable via the `arts_runtime/bootstrap_entry` filter. */
 	private const DEFAULT_BOOTSTRAP_ENTRY = 'src/bootstrap.ts';
 
+	/**
+	 * Inline `<script id>` the JS-side runtime hydrates `__artsManifest__`
+	 * from. PHP↔JS bridge contract — `MANIFEST_BLOB_ID` in
+	 * `packages/component-runtime/src/shared/constants/BOOTSTRAP.ts` mirrors
+	 * this literal. Both sides MUST agree on the exact string.
+	 */
+	private const MANIFEST_BLOB_ID = 'arts-cr-manifest';
+
 	private function __construct() {}
 
 	public static function generate(): string {
@@ -42,10 +52,10 @@ class BootstrapEmitter {
 
 		$merged         = ManifestRegistry::get_merged();
 		$manifest_slice = self::build_manifest_slice( $merged );
-		$manifest_slice = self::apply_dev_overrides( $manifest_slice, self::resolve_dev_manifest() );
+		$manifest_slice = self::apply_dev_overrides( $manifest_slice, ManifestRegistry::get_dev_manifest() );
 
 		if ( ! empty( $manifest_slice ) ) {
-			$out .= JsonBlobEmitter::emit( 'arts-cr-manifest', $manifest_slice );
+			$out .= JsonBlobEmitter::emit( self::MANIFEST_BLOB_ID, $manifest_slice );
 		}
 
 		$bootstrap_entry = self::resolve_bootstrap_entry();
@@ -63,28 +73,6 @@ class BootstrapEmitter {
 		}
 
 		return $out;
-	}
-
-	/**
-	 * @return array<string, string>
-	 */
-	private static function resolve_dev_manifest(): array {
-		/**
-		 * Filter the dev-manifest map.
-		 *
-		 * @param array<string, string> $dev_manifest
-		 */
-		$dev_manifest = apply_filters( 'arts_runtime/dev_manifest', array() );
-		if ( ! is_array( $dev_manifest ) ) {
-			return array();
-		}
-		$result = array();
-		foreach ( $dev_manifest as $name => $url ) {
-			if ( is_string( $name ) && is_string( $url ) ) {
-				$result[ $name ] = $url;
-			}
-		}
-		return $result;
 	}
 
 	private static function resolve_bootstrap_entry(): string {

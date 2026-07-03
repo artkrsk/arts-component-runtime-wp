@@ -42,9 +42,10 @@ class ManifestRegistry {
 
 	/**
 	 * Per-request memo of the `arts_runtime/dev_manifest` filter result.
-	 * Single source of truth — `BootstrapEmitter::resolve_dev_manifest`
-	 * and `ComponentCssEmitter::is_dev_served` both delegate here so the
-	 * filter dispatches once per request even when both emitters run.
+	 * Single source of truth — `BootstrapEmitter::generate` and
+	 * `ComponentCssEmitter::is_dev_served` both read via
+	 * `get_dev_manifest()` so the filter dispatches once per request even
+	 * when both emitters run.
 	 *
 	 * @var array<string, string>|null
 	 */

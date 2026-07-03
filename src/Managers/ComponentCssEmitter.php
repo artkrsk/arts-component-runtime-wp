@@ -34,9 +34,10 @@ class ComponentCssEmitter {
 	private const MODE_INLINE = 'inline';
 	private const MODE_LINK   = 'link';
 
-	// These three ids are part of the PHP↔JS bridge contract. The runtime
-	// kernel exports matching constants for the JS-side consumers; both
-	// sides MUST agree on these literal strings.
+	// LINK_ID_PREFIX and COVERAGE_BLOB_ID are part of the PHP↔JS bridge
+	// contract — the runtime kernel exports matching constants and both
+	// sides MUST agree on the literal strings. STYLE_ID is PHP-only (the
+	// inline-mode blob has no JS-side consumer).
 	private const STYLE_ID         = 'arts-cr-component-css';
 	private const LINK_ID_PREFIX   = 'arts-cr';
 	private const COVERAGE_BLOB_ID = 'arts-cr-css-coverage';

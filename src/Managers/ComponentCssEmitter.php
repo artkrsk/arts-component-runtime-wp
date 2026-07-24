@@ -316,7 +316,7 @@ class ComponentCssEmitter {
 	}
 
 	/**
-	 * Stable per-chunk id (`arts-cr-<basename>-css`) matches what
+	 * Stable per-chunk id (`arts-cr-<basename-no-ext>-css`) matches what
 	 * `ComponentCssPlugin.injectLink` synthesises JS-side, so link-mode
 	 * emissions id-dedup against plugin injection without coverage-blob
 	 * coordination.

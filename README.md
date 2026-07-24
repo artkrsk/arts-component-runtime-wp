@@ -40,7 +40,6 @@ src/
 │   ├── ManifestRegistry.php
 │   ├── PreloadEmitter.php
 │   └── WpContentPathInverter.php
-└── libraries/arts-component-runtime/index.iife.js
 ```
 
 ## License

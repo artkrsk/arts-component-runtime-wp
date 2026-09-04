@@ -334,8 +334,11 @@ class ComponentCssEmitter {
 	}
 
 	/**
-	 * Empty array → empty blob (still emitted so the JS plugin's lookup
-	 * doesn't fall back to "uncovered" for everything).
+	 * Only reached once at least one chunk was collected, and `collect_chunks`
+	 * records coverage for every component whose URLs passed the transformer —
+	 * so `$covered` is non-empty in practice. An empty array would still emit
+	 * a well-formed `[]` blob, which `ComponentCssPlugin` reads exactly like a
+	 * missing blob (empty coverage set, everything uncovered).
 	 *
 	 * @param string[] $covered
 	 */

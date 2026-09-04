@@ -65,7 +65,10 @@ PHPUnit 9.6).
 ## Subtree-split CI
 
 `packages/component-runtime-wp/` mirrors to a standalone composer-
-installable repo via the master-only `subtree-split` workflow. PR
-merges to master fire the mirror; the released package includes
-`tests/` + `phpunit.xml` + the composer test deps so downstream
-consumers can run the suite against their PHP toolchain.
+installable repo via the master-only `subtree-split` workflow (pushes to
+master touching this package, plus tags).
+
+`.gitattributes` marks `tests/`, `phpunit.xml`, `phpstan.neon` and
+`phpcs.xml` `export-ignore`, so they are stripped from the composer dist
+(`git archive`) — consumers get `src/` only. They DO reach the mirror
+repo, so the suite is runnable from a clone of it, not from `vendor/`.

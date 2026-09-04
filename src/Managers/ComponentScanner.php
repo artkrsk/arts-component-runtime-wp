@@ -10,8 +10,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 /**
  * Scans rendered HTML for `data-arts-component-name` attributes and
- * accumulates the unique set for the current request. The three emitters
- * read the union at injection time.
+ * accumulates the unique set for the current request. `ComponentCssEmitter`
+ * and `PreloadEmitter` read the union at injection time; `BootstrapEmitter`
+ * does not — its manifest blob is always-full regardless of what rendered.
  */
 class ComponentScanner {
 	/** @var array<string, true> */

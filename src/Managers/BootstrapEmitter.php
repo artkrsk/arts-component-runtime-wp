@@ -20,11 +20,12 @@ if ( ! defined( 'ABSPATH' ) ) {
  * from one build coexist with bootstrap chunks from another build.
  *
  * Bootstrap tag uses direct string concat instead of
- * `wp_register_script_module` / `wp_enqueue_script_module` because the
- * Script Modules API shifts emission to `wp_footer` on classic themes
- * (`print_enqueued_script_modules` only registers on `wp_footer` /
- * `wp_head:10` for block themes); enqueue from a late buffer-rewrite hook
- * misses both passes.
+ * `wp_register_script_module` / `wp_enqueue_script_module`. On a CLASSIC
+ * theme `WP_Script_Modules::add_hooks()` prints enqueued modules only on
+ * `wp_footer` — the `wp_head` printer (`print_head_enqueued_script_modules`)
+ * is registered for block themes only — so enqueueing from a late
+ * buffer-rewrite hook misses the head entirely and lands after the parser
+ * has already reached the body.
  *
  * Filters:
  *   - `arts_runtime/bootstrap_entry` — override bootstrap key

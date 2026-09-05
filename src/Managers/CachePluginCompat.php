@@ -29,9 +29,12 @@ class CachePluginCompat {
 			add_filter( 'litespeed_buffer_after', array( ComponentDiscovery::class, 'process' ), 999 );
 		}
 
-		// Autoptimize: keep the bootstrap module + manifest blob out of
-		// its JS aggregation pipeline (the bundle is module-typed and
-		// must run as ESM, not concatenated into a classic IIFE).
+		// Autoptimize: defensive only. Its own `should_aggregate()` type
+		// allowlist (text|application)/(javascript|ecmascript) already
+		// rejects both our `type="module"` bootstrap and the
+		// `type="application/json"` blobs before the exclude list is even
+		// consulted, so this filter is belt-and-braces against that gate
+		// changing — not what keeps the module out of a classic IIFE.
 		add_filter( 'autoptimize_filter_js_exclude', array( self::class, 'autoptimize_js_exclude' ) ); // phpcs:ignore WordPressVIPMinimum.Hooks.RestrictedHooks.autoptimize_filter_js_exclude
 	}
 

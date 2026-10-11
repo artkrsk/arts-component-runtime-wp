@@ -29,7 +29,6 @@ final class ManifestRegistryTest extends AbstractTestCase {
 		$reflection = new ReflectionClass( ManifestRegistry::class );
 		foreach ( array( 'cache', 'imports_cache', 'dev_manifest_cache' ) as $prop_name ) {
 			$prop = $reflection->getProperty( $prop_name );
-			$prop->setAccessible( true );
 			$prop->setValue( null, $prop_name === 'imports_cache' ? array() : null );
 		}
 

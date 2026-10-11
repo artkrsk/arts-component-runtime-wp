@@ -28,18 +28,15 @@ final class ComponentDiscoveryTest extends AbstractTestCase {
 
 		// Reset $emitted.
 		$prop = ( new ReflectionClass( ComponentDiscovery::class ) )->getProperty( 'emitted' );
-		$prop->setAccessible( true );
 		$prop->setValue( null, false );
 
 		// Reset ComponentScanner so cells using process() start clean.
 		$scanner = ( new ReflectionClass( ComponentScanner::class ) )->getProperty( 'components' );
-		$scanner->setAccessible( true );
 		$scanner->setValue( null, array() );
 	}
 
 	private static function callPrivate( string $method, array $args ): mixed {
 		$ref = new ReflectionMethod( ComponentDiscovery::class, $method );
-		$ref->setAccessible( true );
 		return $ref->invoke( null, ...$args );
 	}
 
@@ -121,7 +118,6 @@ final class ComponentDiscoveryTest extends AbstractTestCase {
 	public function test_DISC_7b_process_after_emitted_returns_buffer_unchanged_for_litespeed_re_pass(): void {
 		// Force $emitted = true (simulates a previous successful emission).
 		$prop = ( new ReflectionClass( ComponentDiscovery::class ) )->getProperty( 'emitted' );
-		$prop->setAccessible( true );
 		$prop->setValue( null, true );
 
 		$html = '<head><meta charset="utf-8"></head>';

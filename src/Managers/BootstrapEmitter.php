@@ -19,7 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Per-entry asset URLs use `ManifestRegistry`'s `_arts_base_url` so components
  * from one build coexist with bootstrap chunks from another build.
  *
- * Bootstrap tag uses direct string concat instead of
+ * Bootstrap tag is emitted directly through `wp_get_script_tag` instead of
  * `wp_register_script_module` / `wp_enqueue_script_module`. On a CLASSIC
  * theme `WP_Script_Modules::add_hooks()` prints enqueued modules only on
  * `wp_footer` — the `wp_head` printer (`print_head_enqueued_script_modules`)
@@ -63,8 +63,8 @@ class BootstrapEmitter {
 		$entry           = ManifestRegistry::lookup( $bootstrap_entry );
 		if ( is_array( $entry ) && ! empty( $entry['file'] ) && is_string( $entry['file'] ) ) {
 			$bootstrap_url = ManifestRegistry::entry_asset_url( $entry, $entry['file'] );
-			// `wp_get_script_tag` esc_attr's `src` instead of esc_url'ing it,
-			// so pre-esc_url for URL-semantic protection.
+			// Before WP 7.0 `wp_get_script_tag` esc_attr'd `src` instead of
+			// esc_url'ing it; pre-esc_url keeps URL-semantic protection there.
 			$out .= wp_get_script_tag(
 				array(
 					'type' => 'module',

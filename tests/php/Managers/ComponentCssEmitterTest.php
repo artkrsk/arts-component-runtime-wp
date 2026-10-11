@@ -32,18 +32,15 @@ final class ComponentCssEmitterTest extends AbstractTestCase {
 		$mr = new ReflectionClass( ManifestRegistry::class );
 		foreach ( array( 'cache', 'imports_cache', 'dev_manifest_cache' ) as $prop ) {
 			$p = $mr->getProperty( $prop );
-			$p->setAccessible( true );
 			$p->setValue( null, $prop === 'imports_cache' ? array() : null );
 		}
 
 		$scanner = new ReflectionClass( ComponentScanner::class );
 		$prop    = $scanner->getProperty( 'components' );
-		$prop->setAccessible( true );
 		$prop->setValue( null, array() );
 
 		$css = new ReflectionClass( ComponentCssEmitter::class );
 		$p   = $css->getProperty( 'cached_bundle' );
-		$p->setAccessible( true );
 		$p->setValue( null, null );
 
 		if ( ! is_dir( WP_CONTENT_DIR ) ) {

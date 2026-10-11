@@ -24,13 +24,11 @@ final class ComponentScannerTest extends AbstractTestCase {
 	protected function setUp(): void {
 		parent::setUp();
 		$prop = ( new ReflectionClass( ComponentScanner::class ) )->getProperty( 'components' );
-		$prop->setAccessible( true );
 		$prop->setValue( null, array() );
 	}
 
 	private function isValid( string $name ): bool {
 		$method = new ReflectionMethod( ComponentScanner::class, 'is_valid_component_name' );
-		$method->setAccessible( true );
 		return (bool) $method->invoke( null, $name );
 	}
 

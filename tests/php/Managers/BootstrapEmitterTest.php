@@ -28,7 +28,6 @@ final class BootstrapEmitterTest extends AbstractTestCase {
 		$mr = new ReflectionClass( ManifestRegistry::class );
 		foreach ( array( 'cache', 'imports_cache', 'dev_manifest_cache' ) as $prop ) {
 			$p = $mr->getProperty( $prop );
-			$p->setAccessible( true );
 			$p->setValue( null, $prop === 'imports_cache' ? array() : null );
 		}
 

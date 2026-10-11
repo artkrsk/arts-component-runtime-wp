@@ -50,8 +50,8 @@ class ComponentDiscovery {
 			'template_redirect',
 			static function (): void {
 				// `do_feed()` / `do_robots()` echo XML/plain-text the scanner
-				// would process for no gain. `do_favicon()` exits before the
-				// callback ever runs.
+				// would process for no gain. `do_favicon()` redirects and exits
+				// after this callback, leaving the buffer empty.
 				if ( is_feed() || is_robots() ) {
 					return;
 				}

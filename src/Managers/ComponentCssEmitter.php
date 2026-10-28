@@ -17,6 +17,9 @@ if ( ! defined( 'ABSPATH' ) ) {
  *   - `'link'`             — one `<link rel="stylesheet">` per CSS chunk.
  *                            Best for HTTP/2 prioritisation + browser caching.
  *
+ * Components the Vite dev server serves get a `<link>` to their SASS entry
+ * on the dev server instead, at the same early anchor (`emit_dev_links`).
+ *
  * Components first-seen at RUNTIME (Elementor editor drops, AJAX-discovered)
  * are handled by `ComponentCssPlugin` JS-side. Both modes emit a coverage
  * blob (`<script id="arts-cr-css-coverage">`) listing component names already
@@ -82,26 +85,57 @@ class ComponentCssEmitter {
 		if ( empty( $component_names ) ) {
 			return $empty;
 		}
+		$dev_links = self::emit_dev_links( $component_names );
+		$dev_only  = array(
+			'styles'   => $dev_links,
+			'coverage' => '',
+		);
 
 		if ( self::is_link_mode() ) {
 			$result = self::collect_link_chunks( $component_names );
 			if ( empty( $result['chunks'] ) ) {
-				return $empty;
+				return $dev_only;
 			}
 			return array(
-				'styles'   => self::emit_links( $result['chunks'] ),
+				'styles'   => $dev_links . self::emit_links( $result['chunks'] ),
 				'coverage' => self::emit_coverage_blob( $result['covered'] ),
 			);
 		}
 
 		$result = self::collect_inline_chunks( $component_names );
 		if ( empty( $result['chunks'] ) ) {
-			return $empty;
+			return $dev_only;
 		}
 		return array(
-			'styles'   => self::emit_inline( $result['chunks'] ),
+			'styles'   => $dev_links . self::emit_inline( $result['chunks'] ),
 			'coverage' => self::emit_coverage_blob( $result['covered'] ),
 		);
+	}
+
+	/**
+	 * One `<link>` per dev-served component of this render to its SASS entry on
+	 * the dev server (Vite answers a stylesheet request for it with the compiled
+	 * CSS). Printed where the prod blob goes, so a dev page paints first with
+	 * the CSS a built page inlines, in the same cascade order. The id is the one
+	 * the framework's HMR snippet (`<style id="arts-cr-<name>-inline">`) looks
+	 * up: it leaves the link alone and swaps it for an updated `<style>` on a
+	 * SASS edit. `crossorigin` keeps the sheet's rules readable, as the prod
+	 * blob's are (the scroll-timeline polyfill parses them); the dev server
+	 * answers with CORS headers, as it must for the module scripts.
+	 *
+	 * @param string[] $component_names
+	 */
+	private static function emit_dev_links( array $component_names ): string {
+		$styles = ManifestRegistry::get_dev_styles();
+		$out    = '';
+		foreach ( $component_names as $name ) {
+			if ( ! isset( $styles[ $name ] ) ) {
+				continue;
+			}
+			$id   = self::LINK_ID_PREFIX . '-' . $name . '-inline';
+			$out .= '<link rel="stylesheet" id="' . esc_attr( $id ) . '" href="' . esc_url( $styles[ $name ] ) . '" crossorigin="anonymous">' . "\n";
+		}
+		return $out;
 	}
 
 	/**
@@ -215,8 +249,8 @@ class ComponentCssEmitter {
 	 * Returns `null` when the component is unknown, skipped, or has no CSS.
 	 *
 	 * Components present in the `arts_runtime/dev_manifest` filter are auto-
-	 * skipped: their CSS is managed by the framework's HMR snippet
-	 * (`<style id="arts-cr-<name>-inline">`) which updates on SASS save.
+	 * skipped: their CSS is the dev server's (`emit_dev_links`), kept current
+	 * on SASS save by the framework's HMR snippet.
 	 * Without the skip, the cached prod chunk would be inlined into
 	 * `<style id="arts-cr-component-css">` at the EARLY head anchor — and
 	 * CSS cascade leaves earlier-declared properties in force whenever a

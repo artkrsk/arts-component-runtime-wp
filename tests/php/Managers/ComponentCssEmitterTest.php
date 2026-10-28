@@ -291,14 +291,14 @@ final class ComponentCssEmitterTest extends AbstractTestCase {
 
 		Filters\expectApplied( 'arts_runtime/manifest_paths' )->andReturn( array( $manifest ) );
 		Filters\expectApplied( 'arts_runtime/dev_manifest' )->andReturn(
-			array( 'A' => 'http://localhost:5173/A.ts' )
+			array( 'A' => array( 'script' => 'http://localhost:5173/A.ts' ) )
 		);
 
 		ComponentScanner::register_component( 'A' );
 
 		$out = ComponentCssEmitter::generate_styles();
 
-		// CSS skipped because A is dev-served — HMR `<style>` handles styling.
+		// Prod CSS skipped because A is dev-served (and it has no dev style to link).
 		$this->assertSame( '', $out );
 	}
 

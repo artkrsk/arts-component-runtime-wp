@@ -139,7 +139,7 @@ final class BootstrapEmitterTest extends AbstractTestCase {
 		);
 		Filters\expectApplied( 'arts_runtime/manifest_paths' )->andReturn( array( $path ) );
 		Filters\expectApplied( 'arts_runtime/dev_manifest' )->andReturn(
-			array( 'Hero' => 'http://localhost:5173/Hero.ts' )
+			array( 'Hero' => array( 'script' => 'http://localhost:5173/Hero.ts' ) )
 		);
 
 		$out     = BootstrapEmitter::generate();

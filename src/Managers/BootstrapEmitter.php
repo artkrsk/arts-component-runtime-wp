@@ -30,9 +30,9 @@ if ( ! defined( 'ABSPATH' ) ) {
  * Filters:
  *   - `arts_runtime/bootstrap_entry` — override bootstrap key
  *                                      (default `src/bootstrap.ts`).
- *   - `arts_runtime/dev_manifest`    — `{ ComponentName => devUrl }` to
- *                                      override `entry.file` with a Vite
- *                                      dev URL (default `[]`).
+ *   - `arts_runtime/dev_manifest`    — `{ ComponentName => { script, style? } }`;
+ *                                      `script` overrides `entry.file` with a
+ *                                      Vite dev URL (default `[]`).
  */
 class BootstrapEmitter {
 	/** Overridable via the `arts_runtime/bootstrap_entry` filter. */

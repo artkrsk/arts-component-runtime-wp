@@ -214,7 +214,7 @@ final class ManifestRegistryTest extends AbstractTestCase {
 	public function test_MR_8_get_dev_manifest_dispatches_filter_once_then_memoizes(): void {
 		Filters\expectApplied( 'arts_runtime/dev_manifest' )
 			->once()
-			->andReturn( array( 'Hero' => 'http://dev/Hero.js' ) );
+			->andReturn( array( 'Hero' => array( 'script' => 'http://dev/Hero.js' ) ) );
 
 		$first  = ManifestRegistry::get_dev_manifest();
 		$second = ManifestRegistry::get_dev_manifest();
@@ -234,10 +234,10 @@ final class ManifestRegistryTest extends AbstractTestCase {
 	public function test_MR_9b_get_dev_manifest_filters_invalid_entries(): void {
 		Filters\expectApplied( 'arts_runtime/dev_manifest' )->andReturn(
 			array(
-				'Valid'      => 'http://dev/Valid.js',
-				42           => 'http://dev/IntKey.js', // non-string key rejected
-				'EmptyUrl'   => '',                       // empty URL rejected
-				'NonString'  => 123,                      // non-string value rejected
+				'Valid'      => array( 'script' => 'http://dev/Valid.js' ),
+				42           => array( 'script' => 'http://dev/IntKey.js' ), // non-string key rejected
+				'EmptyUrl'   => array( 'script' => '' ),                     // empty URL rejected
+				'NonString'  => 123,                                         // non-array entry rejected
 			)
 		);
 

@@ -43,11 +43,11 @@ class ManifestRegistry {
 	/**
 	 * Per-request memo of the `arts_runtime/dev_manifest` filter result.
 	 * Single source of truth — `BootstrapEmitter::generate` and
-	 * `ComponentCssEmitter::is_dev_served` both read via
-	 * `get_dev_manifest()` so the filter dispatches once per request even
+	 * `ComponentCssEmitter` both read via `get_dev_manifest()` /
+	 * `get_dev_styles()` so the filter dispatches once per request even
 	 * when both emitters run.
 	 *
-	 * @var array<string, string>|null
+	 * @var array<string, array{script: string, style?: string}>|null
 	 */
 	private static ?array $dev_manifest_cache = null;
 
@@ -138,10 +138,10 @@ class ManifestRegistry {
 	}
 
 	/**
-	 * Per-request resolution of the `arts_runtime/dev_manifest` filter.
-	 * Map of `ComponentName => devUrl` for components currently served by
-	 * the Vite dev server. Returns `[]` when no filter subscriber is
-	 * registered or the filter returns a non-array value.
+	 * Entry-module dev URLs (`ComponentName => devUrl`) of the components the
+	 * Vite dev server currently serves, from the `arts_runtime/dev_manifest`
+	 * filter. Returns `[]` when no filter subscriber is registered or the
+	 * filter returns a non-array value.
 	 *
 	 * Centralized here so both `BootstrapEmitter` (folds dev URLs into
 	 * the manifest slice) and `ComponentCssEmitter` (skips prod CSS for
@@ -151,20 +151,61 @@ class ManifestRegistry {
 	 * @return array<string, string>
 	 */
 	public static function get_dev_manifest(): array {
+		return array_map(
+			static function ( array $entry ): string {
+				return $entry['script'];
+			},
+			self::resolve_dev_manifest()
+		);
+	}
+
+	/**
+	 * SASS-entry dev URLs (`ComponentName => devUrl`) of the dev-served
+	 * components that have one, for the head links `ComponentCssEmitter` prints.
+	 *
+	 * @return array<string, string>
+	 */
+	public static function get_dev_styles(): array {
+		$styles = array();
+		foreach ( self::resolve_dev_manifest() as $name => $entry ) {
+			if ( isset( $entry['style'] ) ) {
+				$styles[ $name ] = $entry['style'];
+			}
+		}
+		return $styles;
+	}
+
+	/**
+	 * Per-request resolution of the `arts_runtime/dev_manifest` filter; entries
+	 * without a non-empty `script` are dropped, an empty `style` is ignored.
+	 *
+	 * @return array<string, array{script: string, style?: string}>
+	 */
+	private static function resolve_dev_manifest(): array {
 		if ( self::$dev_manifest_cache !== null ) {
 			return self::$dev_manifest_cache;
 		}
 		/**
-		 * Filter the dev-manifest map.
+		 * Filter the dev-manifest map: `ComponentName => { script, style? }`, the
+		 * dev server URLs of the component's entry module and its SASS entry.
 		 *
-		 * @param array<string, string> $dev_manifest
+		 * @param array<string, array{script: string, style?: string}> $dev_manifest
 		 */
 		$dev_manifest = apply_filters( 'arts_runtime/dev_manifest', array() );
 		$normalized   = array();
 		if ( is_array( $dev_manifest ) ) {
-			foreach ( $dev_manifest as $name => $url ) {
-				if ( is_string( $name ) && is_string( $url ) && $url !== '' ) {
-					$normalized[ $name ] = $url;
+			foreach ( $dev_manifest as $name => $entry ) {
+				if ( ! is_string( $name ) || ! is_array( $entry ) ) {
+					continue;
+				}
+				$script = $entry['script'] ?? null;
+				if ( ! is_string( $script ) || $script === '' ) {
+					continue;
+				}
+				$normalized[ $name ] = array( 'script' => $script );
+				$style               = $entry['style'] ?? null;
+				if ( is_string( $style ) && $style !== '' ) {
+					$normalized[ $name ]['style'] = $style;
 				}
 			}
 		}

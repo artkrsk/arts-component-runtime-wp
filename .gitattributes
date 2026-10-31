@@ -1,6 +1,7 @@
-# Files excluded from the composer-installed dist (and the subtree-split
-# mirror at artkrsk/arts-component-runtime-wp) — keeps consumers' vendor/
-# tree small and free of test / lint scaffolding.
+# Files excluded from the composer-installed dist (GitHub's zipball of the
+# subtree-split mirror at artkrsk/arts-component-runtime-wp) — keeps consumers'
+# vendor/ tree small and free of test / lint scaffolding. The mirror itself
+# keeps them: the split copies this directory and never reads this file.
 /tests          export-ignore
 /phpunit.xml    export-ignore
 /phpstan.neon   export-ignore

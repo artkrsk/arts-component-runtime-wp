@@ -4,9 +4,9 @@
  * fallback, process() guards (empty / re-pass / CLEAN phase),
  * register() short-circuits.
  *
- * Private methods (find_charset_meta_end, inject_after_charset,
- * inject_before_head_close) covered via reflection. The static `$emitted`
- * flag is reset between cells.
+ * Private methods (find_charset_meta_end, inject_before_head_close)
+ * covered via reflection. The static `$emitted` flag is reset between
+ * cells.
  */
 
 declare(strict_types=1);
@@ -40,7 +40,7 @@ final class ComponentDiscoveryTest extends AbstractTestCase {
 		return $ref->invoke( null, ...$args );
 	}
 
-	// ──── find_charset_meta_end (DISC-1 .. DISC-4) ────
+	// ──── find_charset_meta_end (DISC-1 .. DISC-5) ────
 
 	public function test_DISC_1_find_charset_meta_end_happy_path_returns_offset_after_tag(): void {
 		$html   = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>x</title></head></html>';
@@ -79,7 +79,7 @@ final class ComponentDiscoveryTest extends AbstractTestCase {
 	}
 
 	public function test_DISC_4_find_charset_meta_end_charset_past_2KB_window_returns_null(): void {
-		// 2 KB of padding before the charset → outside the search window.
+		// Padding pushes the charset past the 2 KB search window.
 		$padding = str_repeat( '<!-- padding -->', 200 ); // ~3 KB
 		$html    = '<!DOCTYPE html><html><head>' . $padding . '<meta charset="utf-8"></head></html>';
 

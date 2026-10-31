@@ -9,8 +9,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Inverts an absolute asset URL to its local filesystem path. CDN-rewritten
- * URLs return null — callers use that signal to skip disk reads.
+ * Inverts an absolute asset URL to its local filesystem path. Returns null for
+ * URLs outside `content_url()` (e.g. CDN-rewritten) and for files missing on
+ * disk — callers skip the chunk on null.
  */
 class WpContentPathInverter {
 	private function __construct() {}

@@ -218,7 +218,6 @@ final class BootstrapEmitterTest extends AbstractTestCase {
 
 		$out = BootstrapEmitter::generate();
 
-		// type=module + the resolved URL.
 		$this->assertMatchesRegularExpression(
 			'#<script type="module" src="https://example\.test/wp-content/theme/bootstrap\.js"></script>#',
 			$out

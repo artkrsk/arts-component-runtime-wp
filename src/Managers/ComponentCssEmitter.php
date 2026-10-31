@@ -114,14 +114,11 @@ class ComponentCssEmitter {
 
 	/**
 	 * One `<link>` per dev-served component of this render to its SASS entry on
-	 * the dev server (Vite answers a stylesheet request for it with the compiled
-	 * CSS). Printed where the prod blob goes, so a dev page paints first with
-	 * the CSS a built page inlines, in the same cascade order. The id is the one
-	 * the framework's HMR snippet (`<style id="arts-cr-<name>-inline">`) looks
-	 * up: it leaves the link alone and swaps it for an updated `<style>` on a
-	 * SASS edit. `crossorigin` keeps the sheet's rules readable, as the prod
-	 * blob's are (the scroll-timeline polyfill parses them); the dev server
-	 * answers with CORS headers, as it must for the module scripts.
+	 * the dev server. Printed where the prod blob goes, so a dev page paints
+	 * first with the CSS a built page inlines, in the same cascade order. The
+	 * id is the one the framework's HMR snippet (`<style id="arts-cr-<name>-inline">`)
+	 * looks up: it leaves the link alone and swaps it for an updated `<style>`
+	 * on a SASS edit.
 	 *
 	 * @param string[] $component_names
 	 */

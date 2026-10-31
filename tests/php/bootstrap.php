@@ -2,11 +2,12 @@
 /**
  * PHPUnit bootstrap for arts/component-runtime-wp.
  *
- * Defines the minimum WP constants the source files guard on
- * (`defined( 'ABSPATH' ) || exit;`), then loads the Composer
- * autoloader. The autoloader's `classmap` (configured in
- * composer.json's `autoload-dev`) covers WordPress's HTML API
- * classes shipped by `roots/wordpress` — so `new
+ * Defines the minimum WP constants the source depends on: `ABSPATH`
+ * (every source file exits without it) and `WP_CONTENT_DIR`
+ * (ManifestRegistry and WpContentPathInverter resolve paths against
+ * it), then loads the Composer autoloader. The autoloader's
+ * `classmap` (configured in composer.json's `autoload-dev`) covers
+ * WordPress's HTML API classes shipped by `roots/wordpress` — so `new
  * \WP_HTML_Tag_Processor()` resolves to the real implementation
  * on demand. No WordPress core boot, no DB, no plugin loader.
  *

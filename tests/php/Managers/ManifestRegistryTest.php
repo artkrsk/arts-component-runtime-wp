@@ -197,8 +197,9 @@ final class ManifestRegistryTest extends AbstractTestCase {
 		// Documents existing behaviour: derive_base_url does textual prefix
 		// matching against the raw path. A `..` segment inside a path under
 		// WP_CONTENT_DIR survives into the emitted base URL — there's no
-		// rejection layer here. Defense-in-depth lives downstream
-		// (WpContentPathInverter's file_exists gate).
+		// rejection layer here, and none downstream either:
+		// WpContentPathInverter only checks the URL prefix and file_exists
+		// (see INV-4).
 		$path = $this->write_manifest( 'plugins/widget/../widget', array( 'k.ts' => array( 'file' => 'k.js' ) ) );
 
 		Filters\expectApplied( 'arts_runtime/manifest_paths' )->andReturn( array( $path ) );

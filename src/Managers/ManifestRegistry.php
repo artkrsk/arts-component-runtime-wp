@@ -226,9 +226,9 @@ class ManifestRegistry {
 
 	/**
 	 * Resolves a chunk path under `dist/` to a public URL using the entry's
-	 * `_arts_base_url`. Returns `''` when the base URL is missing — only
-	 * triggers when a custom filter feeds raw entries without going through
-	 * the registry.
+	 * `_arts_base_url`. With no usable base (an entry that skipped
+	 * `get_merged()`, or a manifest outside `WP_CONTENT_DIR`, stamped `''`)
+	 * returns the bare relative path with no URL prefix.
 	 *
 	 * @param array<string, mixed> $entry
 	 * @param string               $relative_path

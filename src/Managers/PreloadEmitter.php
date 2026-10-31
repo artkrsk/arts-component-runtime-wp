@@ -11,9 +11,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Builds one `<link rel="modulepreload" href="...">` tag per unique JS chunk
  * URL across every registered component plus its transitive shared-chunk
- * closure. Returned string is concatenated before the bootstrap script tag
- * so the browser sees preloads first and starts parallel fetches while
- * parsing the bootstrap module.
+ * closure. `ComponentDiscovery` splices the returned string at the EARLY
+ * head anchor, ahead of the bootstrap script tag at the LATE anchor, so the
+ * browser starts the parallel fetches before it reaches the bootstrap module.
  *
  * Direct string concat for `<link rel="modulepreload">` — WordPress has no
  * native helper for it, and `wp_register_script_module` only emits preloads

@@ -5,8 +5,8 @@
  *
  * `LSCWP_V` is a PHP constant; once defined, it stays defined for the
  * process lifetime. CACHE-1 needs it defined, but other cells must NOT
- * see it (otherwise their `register()` calls add the litespeed filter
- * without a matching `expectAdded` declaration). Process isolation via
+ * see it (otherwise their `register()` calls would also add the litespeed
+ * filter, which none of them expects). Process isolation via
  * `@runInSeparateProcess` on CACHE-1 forks a fresh PHP process for that
  * one test, so the constant doesn't leak into the rest of the suite.
  */

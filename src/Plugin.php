@@ -19,13 +19,9 @@ use Arts\TextSplitter\Plugin as TextSplitterPlugin;
  * Manifest-driven runtime emission plugin for `@arts/component-runtime`.
  *
  * Auto-discovers components by buffering rendered HTML and scanning for
- * `data-arts-component-name`; CSS, modulepreloads, and bootstrap module
- * are injected after `<meta charset>`. Opt-out via `arts_runtime/auto_discover`.
- *
- * Bootstraps `GSAPLoader` and `TextSplitter` so their classic scripts reach
- * the parser before the bootstrap module evaluates — keeps `window.gsap`,
- * `window.ScrollTrigger`, `window.SplitText`, `window.TextReveal` pointing
- * at single shared instances.
+ * `data-arts-component-name`; CSS and modulepreloads are injected after
+ * `<meta charset>`, the coverage and manifest blobs and the bootstrap module
+ * before `</head>`. Opt-out via `arts_runtime/auto_discover`.
  *
  * @extends BasePlugin<ManagersContainer>
  */

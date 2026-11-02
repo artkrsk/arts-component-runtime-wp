@@ -341,7 +341,7 @@ class ComponentCssEmitter {
 		}
 
 		// CSS body intentionally NOT esc_html'd — must reach the parser verbatim.
-		return '<style id="' . esc_attr( self::STYLE_ID ) . '" data-noptimize="1">' . "\n"
+		return '<style id="' . esc_attr( self::STYLE_ID ) . '" data-no-optimize="1" data-noptimize="1">' . "\n"
 			. implode( "\n", $parts )
 			. "\n" . '</style>' . "\n";
 	}

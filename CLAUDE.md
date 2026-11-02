@@ -63,7 +63,7 @@ Changing one side without the other breaks the runtime silently.
   `ComponentCssPlugin.injectLink` synthesises, so server and runtime links
   dedup by id. Dev SASS links `arts-cr-<Name>-inline` are the id looked up by
   `packages/vite-plugin/src/internals/hmr-snippet.ts`.
-- Inline CSS is `<style id="arts-cr-component-css" data-noptimize="1">` (PHP-only
+- Inline CSS is `<style id="arts-cr-component-css" data-no-optimize="1" data-noptimize="1">` (PHP-only
   id). The Autoptimize exclude token is `arts-runtime`.
 
 ## Gotchas
